@@ -1,4 +1,4 @@
-// Author: Mario Talevski
+// Author: Saifur Rahman Rahmani ai22m055
 #include <iostream>
 #include <cstdlib>
 #include <unistd.h>
@@ -6,61 +6,39 @@
 #include <string>
 #include <sstream>
 #include <stdio.h>
-#include <stdlib.h>
 #include <getopt.h>
 #include <vector>
+#include "Timing.h"
 
 using namespace std;
-
 void printGrid(vector<vector<bool>> &grid);
-void determineState(vector<vector<bool>> &grid);
-void clearScreen(void);
+void determineState(vector<vector<bool>> &grid, int rows, int cols);
 
 /* Flag set by ‘--verbose’. */
 static int verbose_flag;
 int main(int argc, char *argv[])
 {
-    clearScreen();
-    vector<vector<bool>> grid;
-
-    string filename;
-    cout << "                         THE GAME OF life - Implementation in C++" << endl;
-    cout << endl;
-    cout << endl;
-    cout << endl;
-    cout << "Also known simply as life, " << endl;
-    cout << "is a cellular automaton devised by the British mathematician John Horton Conway in 1970." << endl;
-    cout << endl;
-    cout << "Rules" << endl;
-    cout << "The universe of the Game of life is an infinite two-dimensional orthogonal grid of square cells," << endl;
-    cout << "each of which is in one of two possible states, life or dead. Every" << endl;
-    cout << "cell interacts with its eight neighbours, which are the cells that are horizontally, vertically, or diagonally adjacent." << endl;
-    cout << "At each step in time, the following transitions occur:" << endl;
-    cout << "1. Any live cell with fewer than two live neighbours dies, as if caused by under-population." << endl;
-    cout << "2. Any live cell with two or three live neighbours lives on to the next generation." << endl;
-    cout << "3. Any live cell with more than three live neighbours dies, as if by over-population." << endl;
-    cout << "4. Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction." << endl;
-    cout << endl;
-    cout << "x - living cell" << endl;
-    cout << ". - dead cell" << endl;
-    cout << endl;
-
+    //clear scren
+    cout << "\033[2J\033[1;1H";
+    string inputFileName, outputFileName = "";
+    int generations = 250;
+    int measure = 0;
     // parse cmd arguments
     int arguments;
-
-    while (1)
+    while (true)
     {
         static struct option long_options[] =
                 {
-                        /* These options set a flag. */
-                        {"verbose", no_argument, &verbose_flag, 1},
-                        {"brief", no_argument, &verbose_flag, 0},
-                        /* These options don’t set a flag. We distinguish them by their indices. */
-                        {"load", required_argument, 0, 'l'},
-                        {"save", required_argument, 0, 's'},
-                        {"generations", required_argument, 0, 'g'},
-                        {"measure", no_argument, 0, 'm'},
-                        {0, 0, 0, 0}};
+                    /* These options set a flag. */
+                    {"verbose", no_argument, &verbose_flag, 1},
+                    {"brief", no_argument, &verbose_flag, 0},
+                    /* These options don’t set a flag. We distinguish them by their indices. */
+                    {"load", required_argument, 0, 'l'},
+                    {"save", required_argument, 0, 's'},
+                    {"generations", required_argument, 0, 'g'},
+                    {"measure", no_argument, 0, 'm'},
+                    {0, 0, 0, 0}
+                };
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
@@ -92,47 +70,17 @@ int main(int argc, char *argv[])
 
             case 'm':
             {
-                puts("option m\n");
+                measure = 1;
                 break;
             }
 
             case 'l':
             {
-                printf("option -l with value `%s'\n", optarg);
-                // read game board from file
-                ifstream readfile(optarg);
-
-                if (readfile.is_open())
-                {
-                    string fileline;
-                    bool isFirstLine = true;
-                    int i = 0;
-                    while (getline(readfile, fileline))
-                    {
-                        if (isFirstLine)
-                        {
-                            isFirstLine = false;
-                            stringstream ss(fileline);
-                            vector <string> numbers;
-                            string temp;
-                            while (getline(ss, temp, ',')) {
-                                numbers.push_back(temp);
-                            }
-                            const unsigned int rows = stoi(numbers[0]);
-                            const unsigned int cols = stoi(numbers[1]);
-                            grid.resize(rows, vector<bool>(cols));
-                        } else {
-                            for (size_t j = 0; j < grid[i].size(); j++)
-                            {
-                                grid[i][j] = fileline[j] == 'x';
-                            }
-                            i++;
-                        }
-                    }
-                }
-                else
-                {
-                    cout << "No such file, try again." << endl;
+                if (optarg == NULL) {
+                    cerr << "No input file specified." << endl;
+                    return 1;
+                } else {
+                    inputFileName = optarg;
                 }
 
                 break;
@@ -140,13 +88,24 @@ int main(int argc, char *argv[])
 
             case 's':
             {
-                printf("option -s with value `%s'\n", optarg);
+                if (optarg == NULL) {
+                    cerr << "No writeFile file specified" << endl;
+                    return 1;
+                } else {
+                    outputFileName = optarg;
+                }
+
                 break;
             }
 
             case 'g':
             {
-                printf("option -g with value `%s'\n", optarg);
+                if (optarg == NULL) {
+                    cerr << "The number of generation is not specified." << endl;
+                    return 1;
+                } else {
+                    generations = stoi(optarg) ;
+                }
                 break;
             }
 
@@ -181,18 +140,74 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-    while (true)
-    {
-        printGrid(grid);
-        determineState(grid);
-        usleep(200000);
-        clearScreen();
-    }
-}
+    Timing* timing = Timing::getInstance();
+    timing->startSetup();
 
-void clearScreen(void)
-{
-    cout << "\033[2J\033[1;1H";
+    std::ifstream readfile(inputFileName);
+    if (!readfile.is_open())
+    {
+        printf("The given file '%s' is not found.\n", optarg);
+        return 1;
+    }
+    int rows, cols = 0;
+    string line;
+    getline(readfile, line);
+    stringstream ss(line);
+    string token;
+    getline(ss, token, ',');
+    cols = std::stoi(token);
+    getline(ss, token, ',');
+    rows = stoi(token);
+
+    std::vector<std::vector<bool>> grid(rows, std::vector<bool>(cols, false));
+    char c;
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            readfile >> c;
+            if (c == 'x') {
+                grid[i][j] = true;
+            }
+        }
+    }
+
+    timing->stopSetup();
+    timing->startComputation();
+
+    for (int i = 0; i < generations; i++) {
+        determineState(grid, rows, cols);
+    }
+
+    //printGrid(grid);
+
+    timing->stopComputation();
+    timing->startFinalization();
+
+    //write the state of the grid
+    ofstream writeFile(outputFileName);
+    writeFile << cols << "," << rows << endl;
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (grid[i][j]) {
+                writeFile << 'x';
+            }
+            else {
+                writeFile << '.';
+            }
+        }
+
+        writeFile << endl;
+    }
+
+    timing->stopFinalization();
+
+    if (measure) {
+        string timerResult = timing->getResults();
+        cout << timerResult << endl;
+    } else {
+        cout << "executed successfully" << endl;
+    }
+
+    return 0;
 }
 
 void printGrid(vector<vector<bool>> &grid)
@@ -203,11 +218,11 @@ void printGrid(vector<vector<bool>> &grid)
         {
             if (grid[i][j] == true)
             {
-                cout << " x ";
+                cout << "x";
             }
             else
             {
-                cout << " . ";
+                cout << ".";
             }
             if (j == grid[i].size() - 1)
             {
@@ -217,8 +232,10 @@ void printGrid(vector<vector<bool>> &grid)
     }
 }
 
-void copyGrid(vector<vector<bool>> &grid, vector<vector<bool>> &gridCp)
+void determineState(vector<vector<bool>> &grid, int rows, int cols)
 {
+    vector<vector<bool>> gridCp(rows, vector<bool>(cols));
+    //copy grid
     for (size_t i = 0; i < grid.size(); i++)
     {
         for (size_t j = 0; j < grid[i].size(); j++)
@@ -226,14 +243,7 @@ void copyGrid(vector<vector<bool>> &grid, vector<vector<bool>> &gridCp)
             gridCp[i][j] = grid[i][j];
         }
     }
-}
 
-void determineState(vector<vector<bool>> &grid)
-{
-    vector<vector<bool>> gridCp(grid.size(), vector<bool>(grid[0].size()));
-    copyGrid(grid, gridCp);
-    int rows = grid.size();
-    int cols = grid[0].size();
     for (size_t i = 0; i < rows; i++)
     {
         for (size_t j = 0; j < cols; j++)
