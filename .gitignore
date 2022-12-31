@@ -1,0 +1,5 @@
+.idea
+cmake-build-debug
+CMakeLists.txt
+**.gol
+sample.cpp
