@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 
             case 'l': {
                 if (strcmp("-g", optarg) == 0 || strcmp("--generations", optarg) == 0 || strcmp("-s", optarg) == 0 ||
-                    strcmp("--save", optarg) == 0) {
+                    strcmp("--save", optarg) == 0 || strcmp("-m", optarg) == 0 || strcmp("--measure", optarg) == 0) {
                     std::cerr << "Invalid argument for --load: " << optarg << std::endl;
                     std::cerr << optarg << " is an argument of gol" << std::endl;
                     exit(0);
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
 
             case 's': {
                 if (strcmp("-l", optarg) == 0 || strcmp("--load", optarg) == 0 || strcmp("-g", optarg) == 0 ||
-                    strcmp("--generations", optarg) == 0) {
+                    strcmp("--generations", optarg) == 0 || strcmp("-m", optarg) == 0 || strcmp("--measure", optarg) == 0) {
                     std::cerr << "Invalid argument for --save: " << optarg << std::endl;
                     std::cerr << optarg << " is an argument of gol" << std::endl;
                     exit(0);
@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
 
             case 'g': {
                 if (strcmp("-l", optarg) == 0 || strcmp("--load", optarg) == 0 || strcmp("-s", optarg) == 0 ||
-                    strcmp("--save", optarg) == 0) {
+                    strcmp("--save", optarg) == 0 || strcmp("-m", optarg) == 0 || strcmp("--measure", optarg) == 0) {
                     std::cerr << "Invalid argument for --generations: " << optarg << std::endl;
                     std::cerr << optarg << " is an argument of gol" << std::endl;
                     exit(0);
