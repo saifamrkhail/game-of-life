@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
         cout << "$ gol -l <input-file>" << endl;
         exit(0);
     }
-
+    
     Timing *timing = Timing::getInstance();
 
     timing->startSetup();
@@ -206,8 +206,7 @@ int main(int argc, char *argv[]) {
         writeFile << endl;
     }
     timing->stopFinalization();
-    
-    cout << "executed successfully" << endl;
+
     if (measure) {
         string timerResult = timing->getResults();
         cout << timerResult << endl;
