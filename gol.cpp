@@ -168,8 +168,8 @@ int main(int argc, char *argv[]) {
     }
 
     Timing *timing = Timing::getInstance();
-    timing->startSetup();
 
+    timing->startSetup();
     std::ifstream readfile(inputFileName);
     if (!readfile.is_open()) {
         printf("The given file '%s' is not found.\n", inputFileName.c_str());
@@ -195,18 +195,16 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-
     timing->stopSetup();
-    timing->startComputation();
 
+    timing->startComputation();
     for (int i = 0; i < generations; i++) {
         determineState(grid, rows, cols);
     }
-
     timing->stopComputation();
-    timing->startFinalization();
 
-    //write the state of the grid
+    timing->startFinalization();
+    //write grid to file
     ofstream writeFile(outputFileName);
     writeFile << cols << "," << rows << endl;
     for (int i = 0; i < rows; i++) {
@@ -217,19 +215,15 @@ int main(int argc, char *argv[]) {
                 writeFile << '.';
             }
         }
-
         writeFile << endl;
     }
-
     timing->stopFinalization();
-
+    
+    cout << "executed successfully" << endl;
     if (measure) {
         string timerResult = timing->getResults();
         cout << timerResult << endl;
-    } else {
-        cout << "executed successfully" << endl;
     }
-
     return 0;
 }
 
