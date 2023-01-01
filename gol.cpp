@@ -28,7 +28,7 @@ using namespace std;
 void determineState(vector<vector<bool>> &grid, int rows, int cols);
 
 int main(int argc, char *argv[]) {
-    // clear screen
+    //clear screen
     cout << "\033[2J\033[1;1H";
     string inputFileName = "";
     string outputFileName = "out.gol";
