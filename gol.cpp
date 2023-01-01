@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
                         {"save",        required_argument, 0, 's'},
                         {"generations", required_argument, 0, 'g'},
                         {"measure",     no_argument,       0, 'm'},
-                        {"help",     no_argument,       0, 'h'}
+                        {"help",        no_argument,       0, 'h'}
                 };
         /* getopt_long stores the option index here. */
         int option_index = 0;
@@ -71,9 +71,11 @@ int main(int argc, char *argv[]) {
             }
 
             case 'h': {
-                cout << "usage: "  << "gol [--load | -l <filename>] [--save | -s <filename>] [--generations | -g <n>] [--measure | -m]" << endl;
+                cout << "usage: "
+                     << "gol [--load | -l <filename>] [--save | -s <filename>] [--generations | -g <n>] [--measure | -m]"
+                     << endl;
                 cout << "[--load | -l] <filename> (filename to read input board)" << endl;
-                cout <<  "[--save | -s] <filename> (filename to save output board)" << endl;
+                cout << "[--save | -s] <filename> (filename to save output board)" << endl;
                 cout << "[--generations | -g] <n> (run n generations)" << endl;
                 cout << "[--measure | -m] (print time measurements)" << endl;
                 exit(1);
@@ -129,14 +131,14 @@ int main(int argc, char *argv[]) {
             }
 
             case '?': {
-                for (size_t i = optind; i < argc+1; i++) {
-                    if (strcmp("-l", argv[i-1]) == 0 || strcmp("--load", argv[i-1]) == 0) {
+                for (size_t i = optind; i < argc + 1; i++) {
+                    if (strcmp("-l", argv[i - 1]) == 0 || strcmp("--load", argv[i - 1]) == 0) {
                         cerr << "option --load reuires an argument" << endl;
                         exit(0);
-                    } else if (strcmp("-s", argv[i-1]) == 0 || strcmp("--save", argv[i-1]) == 0) {
+                    } else if (strcmp("-s", argv[i - 1]) == 0 || strcmp("--save", argv[i - 1]) == 0) {
                         cerr << "option --save requires an argument" << endl;
                         exit(0);
-                    } else if (strcmp("-g", argv[i-1]) == 0 || strcmp("--generations", argv[i-1]) == 0) {
+                    } else if (strcmp("-g", argv[i - 1]) == 0 || strcmp("--generations", argv[i - 1]) == 0) {
                         cerr << "option --generations requires an argument" << endl;
                         exit(0);
                     }
@@ -230,7 +232,6 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-
 
 void determineState(vector<vector<bool>> &grid, int rows, int cols) {
     vector<vector<bool>> gridCp(rows, vector<bool>(cols));
