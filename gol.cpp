@@ -27,158 +27,215 @@ using namespace std;
 
 void determineState(vector<vector<bool>> &grid, int rows, int cols);
 
-int main(int argc, char *argv[]) {
-    //clear scren
+int main(int argc, char *argv[])
+{
+    // clear screen
     cout << "\033[2J\033[1;1H";
-    string inputFileName, outputFileName = "";
+    string inputFileName = "";
+    string outputFileName = "out.gol";
     int generations = 250;
     int measure = 0;
 
-    //parse command line arguments
+    // parse command line arguments
 
     int arguments;
-    while (true) {
+    while (true)
+    {
         static struct option long_options[] =
-                {
-                        {"load",        required_argument, 0, 'l'},
-                        {"save",        required_argument, 0, 's'},
-                        {"generations", required_argument, 0, 'g'},
-                        {"measure",     no_argument,       0, 'm'},
-                        {"help",        no_argument,       0, 'h'}
-                };
+            {
+                {"load", required_argument, 0, 'l'},
+                {"save", required_argument, 0, 's'},
+                {"generations", required_argument, 0, 'g'},
+                {"measure", no_argument, 0, 'm'},
+                {"help", no_argument, 0, 'h'}};
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
         arguments = getopt_long(argc, argv, "mhl:s:g:", long_options, &option_index);
 
         /* Detect the end of the options. */
-        if (arguments == -1) {
+        if (arguments == -1)
+        {
             break;
         }
 
-        switch (arguments)  {
+        switch (arguments)
+        {
 
-            case 'h': {
-                cout << "usage: "
-                     << "gol [--load | -l <filename>] [--save | -s <filename>] [--generations | -g <n>] [--measure | -m]"
-                     << endl;
-                cout << "[--load | -l] <filename> (filename to read input board)" << endl;
-                cout << "[--save | -s] <filename> (filename to save output board)" << endl;
-                cout << "[--generations | -g] <n> (run n generations)" << endl;
-                cout << "[--measure | -m] (print time measurements)" << endl;
-                exit(1);
+        case 'h':
+        {
+            cout << "usage: "
+                 << "gol [--load | -l <filename>] [--save | -s <filename>] [--generations | -g <n>] [--measure | -m]"
+                 << endl;
+            cout << "[--load | -l] <filename> (filename to read input board)" << endl;
+            cout << "[--save | -s] <filename> (filename to save output board | by defualt 'out.gol')" << endl;
+            cout << "[--generations | -g] <n> (run n generations | by default '250')" << endl;
+            cout << "[--measure | -m] (print time measurements)" << endl;
+            exit(1);
+        }
+
+        case 'm':
+        {
+            measure = 1;
+            break;
+        }
+
+        case 'l':
+        {
+            if (strcmp("-g", optarg) == 0 || strcmp("--generations", optarg) == 0 || strcmp("-s", optarg) == 0 || strcmp("--save", optarg) == 0)
+            {
+                std::cerr << "Invalid argument for --load: " << optarg << std::endl;
+                std::cerr << optarg << " is an argument of gol" << std::endl;
+                exit(0);
             }
+            inputFileName = optarg;
+            break;
+        }
 
-            case 'm': {
-                measure = 1;
-                break;
+        case 's':
+        {
+            if (strcmp("-l", optarg) == 0 || strcmp("--load", optarg) == 0 || strcmp("-g", optarg) == 0 || strcmp("--generations", optarg) == 0)
+            {
+                std::cerr << "Invalid argument for --save: " << optarg << std::endl;
+                std::cerr << optarg << " is an argument of gol" << std::endl;
+                exit(0);
             }
+            outputFileName = optarg;
+            break;
+        }
 
-            case 'l': {
-                if (strcmp("-g", optarg) == 0
-                    || strcmp("--generations", optarg) == 0
-                    || strcmp("-s", optarg) == 0
-                    || strcmp("--save", optarg) == 0) {
-                    std::cerr << "Invalid argument for --load: " << optarg << std::endl;
-                    std::cerr << optarg << " is an argument of gol" << std::endl;
+        case 'g':
+        {
+            if (strcmp("-l", optarg) == 0 || strcmp("--load", optarg) == 0 || strcmp("-s", optarg) == 0 || strcmp("--save", optarg) == 0)
+            {
+                std::cerr << "Invalid argument for --generations: " << optarg << std::endl;
+                std::cerr << optarg << " is an argument of gol" << std::endl;
+                exit(0);
+            }
+            try
+            {
+                generations = stoi(optarg);
+            }
+            catch (const std::invalid_argument &e)
+            {
+                std::cerr << "Invalid argument for generations: " << optarg << std::endl;
+                exit(0);
+            }
+            break;
+        }
+
+        case '?':
+        {
+            for (size_t i = optind; i < argc + 1; i++)
+            {
+                if (strcmp("-l", argv[i - 1]) == 0 || strcmp("--load", argv[i - 1]) == 0)
+                {
+                    cerr << "option --load reuires an argument" << endl;
                     exit(0);
                 }
-                inputFileName = optarg;
-                break;
-            }
-
-            case 's': {
-                if (strcmp("-l", optarg) == 0
-                    || strcmp("--load", optarg) == 0
-                    || strcmp("-g", optarg) == 0
-                    || strcmp("--generations", optarg) == 0) {
-                    std::cerr << "Invalid argument for --save: " << optarg << std::endl;
-                    std::cerr << optarg << " is an argument of gol" << std::endl;
+                else if (strcmp("-s", argv[i - 1]) == 0 || strcmp("--save", argv[i - 1]) == 0)
+                {
+                    cerr << "option --save requires an argument" << endl;
                     exit(0);
                 }
-                outputFileName = optarg;
-                break;
-            }
-
-            case 'g': {
-                if (strcmp("-l", optarg) == 0
-                    || strcmp("--load", optarg) == 0
-                    || strcmp("-s", optarg) == 0
-                    || strcmp("--save", optarg) == 0) {
-                    std::cerr << "Invalid argument for --generations: " << optarg << std::endl;
-                    std::cerr << optarg << " is an argument of gol" << std::endl;
+                else if (strcmp("-g", argv[i - 1]) == 0 || strcmp("--generations", argv[i - 1]) == 0)
+                {
+                    cerr << "option --generations requires an argument" << endl;
                     exit(0);
                 }
-                try {
-                    generations = stoi(optarg);
-                } catch (const std::invalid_argument &e) {
-                    std::cerr << "Invalid argument for generations: " << optarg << std::endl;
-                    exit(0);
-                }
-                break;
             }
-
-            case '?': {
-                for (size_t i = optind; i < argc + 1; i++) {
-                    if (strcmp("-l", argv[i - 1]) == 0 || strcmp("--load", argv[i - 1]) == 0) {
-                        cerr << "option --load reuires an argument" << endl;
-                        exit(0);
-                    } else if (strcmp("-s", argv[i - 1]) == 0 || strcmp("--save", argv[i - 1]) == 0) {
-                        cerr << "option --save requires an argument" << endl;
-                        exit(0);
-                    } else if (strcmp("-g", argv[i - 1]) == 0 || strcmp("--generations", argv[i - 1]) == 0) {
-                        cerr << "option --generations requires an argument" << endl;
-                        exit(0);
-                    }
-                }
-                break;
-            }
-            default: {
-                abort();
-            }
+            break;
+        }
+        default:
+        {
+            abort();
+        }
         }
     }
 
     /* Print any remaining command line arguments (not options). */
-    if (optind < argc) {
+    if (optind < argc)
+    {
         printf("non-option argument: ");
-        while (optind < argc) {
+        while (optind < argc)
+        {
             printf("%s ", argv[optind++]);
         }
         putchar('\n');
         exit(0);
     }
     string empty = "";
-    if (inputFileName.compare(empty) == 0) {
+    if (inputFileName.compare(empty) == 0)
+    {
         cout << "Provide an input file to initialize the grid." << endl;
         cout << "$ gol -l <input-file>" << endl;
         exit(0);
     }
-    
+
     Timing *timing = Timing::getInstance();
 
     timing->startSetup();
-    std::ifstream readfile(inputFileName);
-    if (!readfile.is_open()) {
+    ifstream readfile(inputFileName);
+    
+    if (!readfile.is_open())
+    {
         printf("The given file '%s' is not found.\n", inputFileName.c_str());
         return 1;
     }
+
     int rows, cols = 0;
     string line;
-    getline(readfile, line);
+
+    if (!getline(readfile, line))
+    {
+        cerr << "Error reading input" << endl;
+        exit(0);
+    }
+
     stringstream ss(line);
     string token;
-    getline(ss, token, ',');
-    cols = std::stoi(token);
-    getline(ss, token, ',');
-    rows = stoi(token);
+
+    if (!getline(ss, token, ','))
+    {
+        cerr << "Error reading input" << endl;
+        exit(0);
+    }
+
+    try
+    {
+        cols = std::stoi(token);
+    }
+    catch (const std::invalid_argument &e)
+    {
+        std::cerr << "Invalid value for columns: " << token << std::endl;
+        exit(0);
+    }
+
+    if (!getline(ss, token, ','))
+    {
+        cerr << "Error reading input" << endl;
+        exit(0);
+    }
+
+    try
+    {
+        rows = stoi(token);
+    }
+    catch (const std::invalid_argument &e)
+    {
+        std::cerr << "Invalid value for rows: " << token << std::endl;
+        exit(0);
+    }
 
     std::vector<std::vector<bool>> grid(rows, std::vector<bool>(cols, false));
     char c;
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
             readfile >> c;
-            if (c == 'x') {
+            if (c == 'x')
+            {
                 grid[i][j] = true;
             }
         }
@@ -186,20 +243,26 @@ int main(int argc, char *argv[]) {
     timing->stopSetup();
 
     timing->startComputation();
-    for (int i = 0; i < generations; i++) {
+    for (int i = 0; i < generations; i++)
+    {
         determineState(grid, rows, cols);
     }
     timing->stopComputation();
 
     timing->startFinalization();
-    //write grid to file
+    // write grid to file
     ofstream writeFile(outputFileName);
     writeFile << cols << "," << rows << endl;
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            if (grid[i][j]) {
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            if (grid[i][j])
+            {
                 writeFile << 'x';
-            } else {
+            }
+            else
+            {
                 writeFile << '.';
             }
         }
@@ -207,41 +270,56 @@ int main(int argc, char *argv[]) {
     }
     timing->stopFinalization();
 
-    if (measure) {
+    if (measure)
+    {
         string timerResult = timing->getResults();
         cout << timerResult << endl;
     }
     return 0;
 }
 
-void determineState(vector<vector<bool>> &grid, int rows, int cols) {
+void determineState(vector<vector<bool>> &grid, int rows, int cols)
+{
     vector<vector<bool>> gridCp(rows, vector<bool>(cols));
-    //copy grid
-    for (size_t i = 0; i < grid.size(); i++) {
-        for (size_t j = 0; j < grid[i].size(); j++) {
+    // copy grid
+    for (size_t i = 0; i < grid.size(); i++)
+    {
+        for (size_t j = 0; j < grid[i].size(); j++)
+        {
             gridCp[i][j] = grid[i][j];
         }
     }
 
-    for (size_t i = 0; i < rows; i++) {
-        for (size_t j = 0; j < cols; j++) {
+    for (size_t i = 0; i < rows; i++)
+    {
+        for (size_t j = 0; j < cols; j++)
+        {
             int alive = 0;
-            for (int m = -1; m < 2; m++) {
-                for (int n = -1; n < 2; n++) {
-                    if (!(m == 0 && n == 0)) {
+            for (int m = -1; m < 2; m++)
+            {
+                for (int n = -1; n < 2; n++)
+                {
+                    if (!(m == 0 && n == 0))
+                    {
                         int r = ((i + m) + rows) % rows;
                         int c = ((j + n) + cols) % cols;
-                        if (gridCp[r][c]) {
+                        if (gridCp[r][c])
+                        {
                             ++alive;
                         }
                     }
                 }
             }
-            if (alive < 2) {
+            if (alive < 2)
+            {
                 grid[i][j] = false;
-            } else if (alive == 3) {
+            }
+            else if (alive == 3)
+            {
                 grid[i][j] = true;
-            } else if (alive > 3) {
+            }
+            else if (alive > 3)
+            {
                 grid[i][j] = false;
             }
         }
