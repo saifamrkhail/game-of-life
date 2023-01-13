@@ -21,22 +21,36 @@
 #include <getopt.h>
 #include <vector>
 #include <cstring>
+#include <omp.h>
 #include "Timing.h"
 
 using namespace std;
-
-void determineState(vector<vector<bool>> &grid, int rows, int cols);
+const unsigned int state[2][8] = {
+        {0, 0, 1, 0, 0, 0, 0, 0},
+        {0, 1, 1, 0, 0, 0, 0, 0}
+};
+//void determineState(vector<vector<bool>> &grid, vector<vector<bool>> &copy, unsigned int rows, unsigned int cols, unsigned int (&state)[2][8], unsigned int threads);
+//void determineState(vector<vector<bool>> &grid, vector<vector<bool>> &copy, unsigned int rows, unsigned int cols);
 
 int main(int argc, char *argv[]) {
     //clear screen
     cout << "\033[2J\033[1;1H";
     string inputFileName = "";
     string outputFileName = "out.gol";
-    int generations = 250;
-    int measure = 0;
+    unsigned int generations = 250;
+    int threads = 8;
+    bool measure = false;
+    //bool omp = false;
+    /*const unsigned int state[2][8] = {
+            {0, 0, 1, 0, 0, 0, 0, 0},
+            {0, 1, 1, 0, 0, 0, 0, 0}
+    };*/
+    char characters[2] = {'.', 'x'};
+    unsigned int rows = 0, cols = 0;
 
-    /* parse command line arguments*/
 
+
+/* parse command line arguments*/
     int arguments;
     while (true) {
         static struct option long_options[] =
@@ -45,11 +59,13 @@ int main(int argc, char *argv[]) {
                         {"save",        required_argument, 0, 's'},
                         {"generations", required_argument, 0, 'g'},
                         {"measure",     no_argument,       0, 'm'},
-                        {"help",        no_argument,       0, 'h'}};
+                        {"help",        no_argument,       0, 'h'},
+                        {"mode",        required_argument, 0, 'd'},
+                        {"threads",     required_argument, 0, 't'}};
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        arguments = getopt_long(argc, argv, "mhl:s:g:", long_options, &option_index);
+        arguments = getopt_long(argc, argv, "mhl:s:g:d:t:", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (arguments == -1) {
@@ -66,17 +82,21 @@ int main(int argc, char *argv[]) {
                 cout << "[--save | -s] <filename> (filename to save output board | by defualt 'out.gol')" << endl;
                 cout << "[--generations | -g] <n> (run n generations | by default '250')" << endl;
                 cout << "[--measure | -m] (print time measurements)" << endl;
+                cout << "[--mode | -d] <seq | omp> (select between seq and omp)" << endl;
+                cout << "[--threads | -t] <num> (set number of threads | by default 1)" << endl;
                 exit(1);
             }
 
             case 'm': {
-                measure = 1;
+                measure = true;
                 break;
             }
 
             case 'l': {
                 if (strcmp("-g", optarg) == 0 || strcmp("--generations", optarg) == 0 || strcmp("-s", optarg) == 0 ||
-                    strcmp("--save", optarg) == 0 || strcmp("-m", optarg) == 0 || strcmp("--measure", optarg) == 0) {
+                    strcmp("--save", optarg) == 0 || strcmp("-m", optarg) == 0 || strcmp("--measure", optarg) == 0 ||
+                    strcmp("-t", optarg) == 0 || strcmp("--threads", optarg) == 0 ||
+                    strcmp("-d", optarg) == 0 || strcmp("--mode", optarg) == 0) {
                     std::cerr << "Invalid argument for --load: " << optarg << std::endl;
                     std::cerr << optarg << " is an argument of gol" << std::endl;
                     exit(0);
@@ -87,7 +107,9 @@ int main(int argc, char *argv[]) {
 
             case 's': {
                 if (strcmp("-l", optarg) == 0 || strcmp("--load", optarg) == 0 || strcmp("-g", optarg) == 0 ||
-                    strcmp("--generations", optarg) == 0 || strcmp("-m", optarg) == 0 || strcmp("--measure", optarg) == 0) {
+                    strcmp("--generations", optarg) == 0 || strcmp("-m", optarg) == 0 ||
+                    strcmp("--measure", optarg) == 0 || strcmp("-t", optarg) == 0 || strcmp("--threads", optarg) == 0 ||
+                    strcmp("-d", optarg) == 0 || strcmp("--mode", optarg) == 0) {
                     std::cerr << "Invalid argument for --save: " << optarg << std::endl;
                     std::cerr << optarg << " is an argument of gol" << std::endl;
                     exit(0);
@@ -98,7 +120,9 @@ int main(int argc, char *argv[]) {
 
             case 'g': {
                 if (strcmp("-l", optarg) == 0 || strcmp("--load", optarg) == 0 || strcmp("-s", optarg) == 0 ||
-                    strcmp("--save", optarg) == 0 || strcmp("-m", optarg) == 0 || strcmp("--measure", optarg) == 0) {
+                    strcmp("--save", optarg) == 0 || strcmp("-m", optarg) == 0 || strcmp("--measure", optarg) == 0 ||
+                    strcmp("-t", optarg) == 0 || strcmp("--threads", optarg) == 0 ||
+                    strcmp("-d", optarg) == 0 || strcmp("--mode", optarg) == 0) {
                     std::cerr << "Invalid argument for --generations: " << optarg << std::endl;
                     std::cerr << optarg << " is an argument of gol" << std::endl;
                     exit(0);
@@ -110,11 +134,53 @@ int main(int argc, char *argv[]) {
                     std::cerr << "Invalid argument for generations: " << optarg << std::endl;
                     exit(0);
                 }
+
+                cout << generations << endl;
+                exit(1);
+                break;
+            }
+
+            case 'd' : {
+                if (strcmp("-l", optarg) == 0 || strcmp("--load", optarg) == 0 || strcmp("-s", optarg) == 0 ||
+                    strcmp("--save", optarg) == 0 || strcmp("-m", optarg) == 0 || strcmp("--measure", optarg) == 0
+                    || strcmp("-t", optarg) == 0 || strcmp("--threads", optarg) == 0) {
+                    std::cerr << "Invalid argument for --mode: " << optarg << std::endl;
+                    std::cerr << optarg << " is an argument of gol" << std::endl;
+                    exit(0);
+                }
+
+                if (strcmp("seq", optarg) != 0 && strcmp("omp", optarg) != 0) {
+                    std::cerr << "Invalid argument for --mode: " << optarg << std::endl;
+                    std::cerr << optarg << " --mode options are 'seq' or 'omp'" << std::endl;
+                    exit(0);
+                }
+
+                if (strcmp("omp", optarg) == 0) {
+                    //omp = true;
+                }
+                break;
+            }
+
+            case 't': {
+                if (strcmp("-l", optarg) == 0 || strcmp("--load", optarg) == 0 || strcmp("-s", optarg) == 0 ||
+                    strcmp("--save", optarg) == 0 || strcmp("-m", optarg) == 0 || strcmp("--measure", optarg) == 0 ||
+                    strcmp("-d", optarg) == 0 || strcmp("--mode", optarg) == 0) {
+                    std::cerr << "Invalid argument for --threads: " << optarg << std::endl;
+                    std::cerr << optarg << " is an option of gol" << std::endl;
+                    exit(0);
+                }
+                try {
+                    threads = stoi(optarg);
+                }
+                catch (const std::invalid_argument &e) {
+                    std::cerr << "Invalid argument for threads: " << optarg << std::endl;
+                    exit(0);
+                }
                 break;
             }
 
             case '?': {
-                for (size_t i = optind; i < argc + 1; i++) {
+                for (int i = optind; i < argc + 1; i++) {
                     if (strcmp("-l", argv[i - 1]) == 0 || strcmp("--load", argv[i - 1]) == 0) {
                         cerr << "option --load reuires an argument" << endl;
                         exit(0);
@@ -123,6 +189,12 @@ int main(int argc, char *argv[]) {
                         exit(0);
                     } else if (strcmp("-g", argv[i - 1]) == 0 || strcmp("--generations", argv[i - 1]) == 0) {
                         cerr << "option --generations requires an argument" << endl;
+                        exit(0);
+                    } else if (strcmp("-d", argv[i - 1]) == 0 || strcmp("--mode", argv[i - 1]) == 0) {
+                        cerr << "option --mode requires an argument" << endl;
+                        exit(0);
+                    } else if (strcmp("-t", argv[i - 1]) == 0 || strcmp("--threads", argv[i - 1]) == 0) {
+                        cerr << "option --threads requires an argument" << endl;
                         exit(0);
                     }
                 }
@@ -162,7 +234,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    int rows, cols = 0;
+
     string line;
 
     if (!getline(readfile, line)) {
@@ -199,38 +271,48 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
 
-    std::vector<std::vector<bool>> grid(rows, std::vector<bool>(cols, false));
+    vector<vector<bool>> grid(rows, vector<bool>(cols, false));
     char c;
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
+    for (unsigned int i = 0; i < rows; i++) {
+        for (unsigned int j = 0; j < cols; j++) {
             readfile >> c;
-            if (c == 'x') {
-                grid[i][j] = true;
-            }
+            grid[i][j] = c == 'x';
         }
     }
     timing->stopSetup();
 
     /*compute generations*/
-
     timing->startComputation();
-    for (int i = 0; i < generations; i++) {
-        determineState(grid, rows, cols);
+    vector<vector<bool>> copy(rows, vector<bool>(cols));
+    for (unsigned int gen = 0; gen < generations; gen++) {
+        copy = grid;
+        #pragma omp parallel num_threads(threads)
+        #pragma omp for
+        for (unsigned int i = 0; i < rows; i++) {
+            for (unsigned int j = 0; j < cols; j++) {
+                int alive = copy[((i - 1) + rows) % rows][((j - 1) + cols) % cols] +
+                            copy[((i - 1) + rows) % rows][(j + cols) % cols] +
+                            copy[((i - 1) + rows) % rows][((j + 1) + cols) % cols] +
+                            copy[(i + rows) % rows][((j - 1) + cols) % cols] +
+                            copy[(i + rows) % rows][((j + 1) + cols) % cols] +
+                            copy[((i + 1) + rows) % rows][((j - 1) + cols) % cols] +
+                            copy[((i + 1) + rows) % rows][(j + cols) % cols] +
+                            copy[((i + 1) + rows) % rows][((j + 1) + cols) % cols];
+                grid[i][j] = state[grid[i][j]][alive-1];
+            }
+        }
+        //determineState(grid, copy, rows, cols, state, threads);
+        //determineState(grid, copy, rows, cols);
     }
     timing->stopComputation();
 
     /*write to file*/
-
     timing->startFinalization();
     ofstream writeFile(outputFileName);
     writeFile << cols << "," << rows << endl;
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            if (grid[i][j]) {
-                writeFile << 'x';
-            } else {
-                writeFile << '.';
-            }
+    for (unsigned int i = 0; i < rows; i++) {
+        for (unsigned int j = 0; j < cols; j++) {
+            writeFile << characters[grid[i][j]];
         }
         writeFile << endl;
     }
@@ -242,37 +324,21 @@ int main(int argc, char *argv[]) {
     }
     return 0;
 }
-
-void determineState(vector<vector<bool>> &grid, int rows, int cols) {
-    vector<vector<bool>> gridCp(rows, vector<bool>(cols));
-    //copy grid
-    for (size_t i = 0; i < grid.size(); i++) {
-        for (size_t j = 0; j < grid[i].size(); j++) {
-            gridCp[i][j] = grid[i][j];
+//void determineState(vector<vector<bool>> &grid, vector<vector<bool>> &copy, unsigned int rows, unsigned int cols, unsigned int (&state)[2][8], unsigned int threads) {
+/*void determineState(vector<vector<bool>> &grid, vector<vector<bool>> &copy, unsigned int rows, unsigned int cols) {
+#pragma omp parallel num_threads(1)
+    #pragma omp for
+    for (unsigned int i = 0; i < rows; i++) {
+        for (unsigned int j = 0; j < cols; j++) {
+            int alive = copy[((i - 1) + rows) % rows][((j - 1) + cols) % cols] +
+                        copy[((i - 1) + rows) % rows][(j + cols) % cols] +
+                        copy[((i - 1) + rows) % rows][((j + 1) + cols) % cols] +
+                        copy[(i + rows) % rows][((j - 1) + cols) % cols] +
+                        copy[(i + rows) % rows][((j + 1) + cols) % cols] +
+                        copy[((i + 1) + rows) % rows][((j - 1) + cols) % cols] +
+                        copy[((i + 1) + rows) % rows][(j + cols) % cols] +
+                        copy[((i + 1) + rows) % rows][((j + 1) + cols) % cols];
+            grid[i][j] = state[grid[i][j]][alive-1];
         }
     }
-    //determine state of cell
-    for (size_t i = 0; i < rows; i++) {
-        for (size_t j = 0; j < cols; j++) {
-            int alive = 0;
-            for (int m = -1; m < 2; m++) {
-                for (int n = -1; n < 2; n++) {
-                    if (!(m == 0 && n == 0)) {
-                        int r = ((i + m) + rows) % rows;
-                        int c = ((j + n) + cols) % cols;
-                        if (gridCp[r][c]) {
-                            ++alive;
-                        }
-                    }
-                }
-            }
-            if (alive < 2) {
-                grid[i][j] = false;
-            } else if (alive == 3) {
-                grid[i][j] = true;
-            } else if (alive > 3) {
-                grid[i][j] = false;
-            }
-        }
-    }
-}
+}*/
