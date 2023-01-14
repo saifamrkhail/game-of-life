@@ -4,5 +4,7 @@ cmake-build-debug
 CMakeLists.txt
 step1000_in_250generations
 step1000_out_250generations
+cpu
+openmp
 **.gol
 **.csv
