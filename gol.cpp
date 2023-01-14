@@ -29,26 +29,20 @@ const unsigned int state[2][8] = {
         {0, 0, 1, 0, 0, 0, 0, 0},
         {0, 1, 1, 0, 0, 0, 0, 0}
 };
-//void determineState(vector<vector<bool>> &grid, vector<vector<bool>> &copy, unsigned int rows, unsigned int cols, unsigned int (&state)[2][8], unsigned int threads);
-//void determineState(vector<vector<bool>> &grid, vector<vector<bool>> &copy, unsigned int rows, unsigned int cols);
 
 int main(int argc, char *argv[]) {
     //clear screen
     cout << "\033[2J\033[1;1H";
     string inputFileName = "";
     string outputFileName = "out.gol";
+    string csvfiles[2] = {"ai22m055_cpu_time.csv", "ai22m055_openmp_time.csv"};
     unsigned int generations = 250;
-    int threads = 8;
+    int threads[2] = {1, 1};
     bool measure = false;
-    //bool omp = false;
-    /*const unsigned int state[2][8] = {
-            {0, 0, 1, 0, 0, 0, 0, 0},
-            {0, 1, 1, 0, 0, 0, 0, 0}
-    };*/
+    bool omp = false;
+    //unsigned int
     char characters[2] = {'.', 'x'};
     unsigned int rows = 0, cols = 0;
-
-
 
 /* parse command line arguments*/
     int arguments;
@@ -156,7 +150,7 @@ int main(int argc, char *argv[]) {
                 }
 
                 if (strcmp("omp", optarg) == 0) {
-                    //omp = true;
+                    omp = true;
                 }
                 break;
             }
@@ -170,7 +164,7 @@ int main(int argc, char *argv[]) {
                     exit(0);
                 }
                 try {
-                    threads = stoi(optarg);
+                    threads[1] = stoi(optarg);
                 }
                 catch (const std::invalid_argument &e) {
                     std::cerr << "Invalid argument for threads: " << optarg << std::endl;
@@ -286,7 +280,7 @@ int main(int argc, char *argv[]) {
     vector<vector<bool>> copy(rows, vector<bool>(cols));
     for (unsigned int gen = 0; gen < generations; gen++) {
         copy = grid;
-        #pragma omp parallel num_threads(threads)
+        #pragma omp parallel num_threads(threads[omp])
         #pragma omp for
         for (unsigned int i = 0; i < rows; i++) {
             for (unsigned int j = 0; j < cols; j++) {
@@ -298,11 +292,9 @@ int main(int argc, char *argv[]) {
                             copy[((i + 1) + rows) % rows][((j - 1) + cols) % cols] +
                             copy[((i + 1) + rows) % rows][(j + cols) % cols] +
                             copy[((i + 1) + rows) % rows][((j + 1) + cols) % cols];
-                grid[i][j] = state[grid[i][j]][alive-1];
+                grid[i][j] = state[grid[i][j]][alive - 1];
             }
         }
-        //determineState(grid, copy, rows, cols, state, threads);
-        //determineState(grid, copy, rows, cols);
     }
     timing->stopComputation();
 
@@ -321,24 +313,17 @@ int main(int argc, char *argv[]) {
     if (measure) {
         string timerResult = timing->getResults();
         cout << timerResult << endl;
+
+        std::ofstream csv;
+        string csvname = csvfiles[omp];
+        csv.open(csvname, ios::out | ios::app);
+        if (csv.fail()) {
+            throw std::ios_base::failure(std::strerror(errno));
+        }
+
+        csv.exceptions(csv.exceptions() | ios::failbit | ifstream::badbit);
+        csv << timerResult << endl;
+
     }
     return 0;
 }
-//void determineState(vector<vector<bool>> &grid, vector<vector<bool>> &copy, unsigned int rows, unsigned int cols, unsigned int (&state)[2][8], unsigned int threads) {
-/*void determineState(vector<vector<bool>> &grid, vector<vector<bool>> &copy, unsigned int rows, unsigned int cols) {
-#pragma omp parallel num_threads(1)
-    #pragma omp for
-    for (unsigned int i = 0; i < rows; i++) {
-        for (unsigned int j = 0; j < cols; j++) {
-            int alive = copy[((i - 1) + rows) % rows][((j - 1) + cols) % cols] +
-                        copy[((i - 1) + rows) % rows][(j + cols) % cols] +
-                        copy[((i - 1) + rows) % rows][((j + 1) + cols) % cols] +
-                        copy[(i + rows) % rows][((j - 1) + cols) % cols] +
-                        copy[(i + rows) % rows][((j + 1) + cols) % cols] +
-                        copy[((i + 1) + rows) % rows][((j - 1) + cols) % cols] +
-                        copy[((i + 1) + rows) % rows][(j + cols) % cols] +
-                        copy[((i + 1) + rows) % rows][((j + 1) + cols) % cols];
-            grid[i][j] = state[grid[i][j]][alive-1];
-        }
-    }
-}*/

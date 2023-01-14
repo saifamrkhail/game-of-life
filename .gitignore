@@ -2,7 +2,7 @@
 .idea
 cmake-build-debug
 CMakeLists.txt
-**.gol
 step1000_in_250generations
 step1000_out_250generations
-sample.cpp
+**.gol
+**.csv
